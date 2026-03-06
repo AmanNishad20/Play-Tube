@@ -1,4 +1,24 @@
+<<<<<<< codex/add-professional-readme-and-fix-bugs
+const { useMemo, useState, useEffect } = React;
+
+function generateId() {
+  if (window.crypto && typeof window.crypto.randomUUID === "function") {
+    return window.crypto.randomUUID();
+  }
+
+  return `video-${Date.now()}-${Math.random().toString(16).slice(2)}`;
+}
+
+const SAMPLE_VIDEOS = [
+  {
+    id: generateId(),
+    title: "Welcome Video",
+    url: "https://drive.google.com/file/d/1mGqmx7y4ZX2wO9d5Gk8q_x2K2W8XJQ1M/view?usp=sharing"
+  }
+];
+=======
 const { useEffect, useMemo, useState } = React;
+>>>>>>> main
 
 function extractDriveId(link) {
   const patterns = [/\/file\/d\/([a-zA-Z0-9_-]+)/, /[?&]id=([a-zA-Z0-9_-]+)/, /\/d\/([a-zA-Z0-9_-]+)/];
@@ -14,6 +34,30 @@ function toPreviewUrl(link) {
   return id ? `https://drive.google.com/file/d/${id}/preview` : null;
 }
 
+<<<<<<< codex/add-professional-readme-and-fix-bugs
+function readSavedVideos() {
+  const saved = localStorage.getItem("playtube-videos");
+  if (!saved) return SAMPLE_VIDEOS;
+
+  try {
+    const parsed = JSON.parse(saved);
+    if (!Array.isArray(parsed)) return SAMPLE_VIDEOS;
+
+    return parsed.filter(
+      (video) =>
+        video &&
+        typeof video.id === "string" &&
+        typeof video.title === "string" &&
+        typeof video.url === "string"
+    );
+  } catch {
+    return SAMPLE_VIDEOS;
+  }
+}
+
+function App() {
+  const [videos, setVideos] = useState(readSavedVideos);
+=======
 async function fetchJson(url, options = {}) {
   const response = await fetch(url, {
     headers: { 'Content-Type': 'application/json' },
@@ -25,6 +69,7 @@ async function fetchJson(url, options = {}) {
   }
   return data;
 }
+>>>>>>> main
 
 function App() {
   const [page, setPage] = useState('welcome');
@@ -108,6 +153,19 @@ function App() {
       return;
     }
 
+<<<<<<< codex/add-professional-readme-and-fix-bugs
+    const newVideo = {
+      id: generateId(),
+      title: trimmedTitle,
+      url: trimmedUrl,
+    };
+
+    setVideos((prev) => [newVideo, ...prev]);
+    setSelectedId(newVideo.id);
+    setTitle("");
+    setUrl("");
+    setError("");
+=======
     try {
       await fetchJson('/api/videos', {
         method: 'POST',
@@ -135,6 +193,7 @@ function App() {
     } catch (err) {
       setError(err.message);
     }
+>>>>>>> main
   };
 
   return (
