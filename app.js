@@ -1,8 +1,16 @@
 const { useMemo, useState, useEffect } = React;
 
+function generateId() {
+  if (window.crypto && typeof window.crypto.randomUUID === "function") {
+    return window.crypto.randomUUID();
+  }
+
+  return `video-${Date.now()}-${Math.random().toString(16).slice(2)}`;
+}
+
 const SAMPLE_VIDEOS = [
   {
-    id: crypto.randomUUID(),
+    id: generateId(),
     title: "Welcome Video",
     url: "https://drive.google.com/file/d/1mGqmx7y4ZX2wO9d5Gk8q_x2K2W8XJQ1M/view?usp=sharing"
   }
@@ -27,12 +35,28 @@ function toPreviewUrl(link) {
   return id ? `https://drive.google.com/file/d/${id}/preview` : null;
 }
 
-function App() {
-  const [videos, setVideos] = useState(() => {
-    const saved = localStorage.getItem("playtube-videos");
-    if (saved) return JSON.parse(saved);
+function readSavedVideos() {
+  const saved = localStorage.getItem("playtube-videos");
+  if (!saved) return SAMPLE_VIDEOS;
+
+  try {
+    const parsed = JSON.parse(saved);
+    if (!Array.isArray(parsed)) return SAMPLE_VIDEOS;
+
+    return parsed.filter(
+      (video) =>
+        video &&
+        typeof video.id === "string" &&
+        typeof video.title === "string" &&
+        typeof video.url === "string"
+    );
+  } catch {
     return SAMPLE_VIDEOS;
-  });
+  }
+}
+
+function App() {
+  const [videos, setVideos] = useState(readSavedVideos);
 
   const [selectedId, setSelectedId] = useState(videos[0]?.id ?? null);
   const [title, setTitle] = useState("");
@@ -64,7 +88,7 @@ function App() {
     }
 
     const newVideo = {
-      id: crypto.randomUUID(),
+      id: generateId(),
       title: trimmedTitle,
       url: trimmedUrl,
     };
