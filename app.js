@@ -1,3 +1,4 @@
+<<<<<<< codex/add-professional-readme-and-fix-bugs
 const { useMemo, useState, useEffect } = React;
 
 function generateId() {
@@ -15,14 +16,12 @@ const SAMPLE_VIDEOS = [
     url: "https://drive.google.com/file/d/1mGqmx7y4ZX2wO9d5Gk8q_x2K2W8XJQ1M/view?usp=sharing"
   }
 ];
+=======
+const { useEffect, useMemo, useState } = React;
+>>>>>>> main
 
 function extractDriveId(link) {
-  const patterns = [
-    /\/file\/d\/([a-zA-Z0-9_-]+)/,
-    /[?&]id=([a-zA-Z0-9_-]+)/,
-    /\/d\/([a-zA-Z0-9_-]+)/,
-  ];
-
+  const patterns = [/\/file\/d\/([a-zA-Z0-9_-]+)/, /[?&]id=([a-zA-Z0-9_-]+)/, /\/d\/([a-zA-Z0-9_-]+)/];
   for (const pattern of patterns) {
     const match = link.match(pattern);
     if (match?.[1]) return match[1];
@@ -35,6 +34,7 @@ function toPreviewUrl(link) {
   return id ? `https://drive.google.com/file/d/${id}/preview` : null;
 }
 
+<<<<<<< codex/add-professional-readme-and-fix-bugs
 function readSavedVideos() {
   const saved = localStorage.getItem("playtube-videos");
   if (!saved) return SAMPLE_VIDEOS;
@@ -57,36 +57,103 @@ function readSavedVideos() {
 
 function App() {
   const [videos, setVideos] = useState(readSavedVideos);
+=======
+async function fetchJson(url, options = {}) {
+  const response = await fetch(url, {
+    headers: { 'Content-Type': 'application/json' },
+    ...options,
+  });
+  const data = await response.json().catch(() => ({}));
+  if (!response.ok) {
+    throw new Error(data.error || 'Request failed');
+  }
+  return data;
+}
+>>>>>>> main
 
-  const [selectedId, setSelectedId] = useState(videos[0]?.id ?? null);
-  const [title, setTitle] = useState("");
-  const [url, setUrl] = useState("");
-  const [error, setError] = useState("");
+function App() {
+  const [page, setPage] = useState('welcome');
+  const [sections, setSections] = useState([]);
+  const [search, setSearch] = useState('');
+  const [selectedVideo, setSelectedVideo] = useState(null);
+  const [status, setStatus] = useState({ connected: false, hasMongoUri: false });
+  const [error, setError] = useState('');
 
-  useEffect(() => {
-    localStorage.setItem("playtube-videos", JSON.stringify(videos));
-  }, [videos]);
+  const [newSection, setNewSection] = useState('');
+  const [newVideo, setNewVideo] = useState({ title: '', url: '', sectionId: '' });
+  const [mongoUri, setMongoUri] = useState('');
 
-  const selectedVideo = useMemo(
-    () => videos.find((video) => video.id === selectedId) || null,
-    [videos, selectedId]
+  const allVideos = useMemo(
+    () => sections.flatMap((section) => section.videos.map((video) => ({ ...video, sectionName: section.name }))),
+    [sections]
   );
 
-  const onAddVideo = (event) => {
+  async function loadStatus() {
+    try {
+      const data = await fetchJson('/api/health');
+      setStatus(data);
+    } catch {
+      setError('Failed to load server status.');
+    }
+  }
+
+  async function loadSections(searchValue = '') {
+    try {
+      const data = await fetchJson(`/api/sections?search=${encodeURIComponent(searchValue)}`);
+      setSections(data);
+      const firstVideo = data.flatMap((section) => section.videos)[0] || null;
+      setSelectedVideo((prev) => prev || firstVideo);
+      setNewVideo((prev) => ({ ...prev, sectionId: prev.sectionId || data[0]?._id || '' }));
+      setError('');
+    } catch (err) {
+      setSections([]);
+      setSelectedVideo(null);
+      setError(err.message);
+    }
+  }
+
+  useEffect(() => {
+    loadStatus();
+    loadSections();
+  }, []);
+
+  const onSearch = async (event) => {
     event.preventDefault();
-    const trimmedTitle = title.trim();
-    const trimmedUrl = url.trim();
+    await loadSections(search);
+  };
 
-    if (!trimmedTitle || !trimmedUrl) {
-      setError("Please add a title and a Google Drive link.");
+  const onCreateSection = async (event) => {
+    event.preventDefault();
+    if (!newSection.trim()) return;
+    try {
+      await fetchJson('/api/sections', {
+        method: 'POST',
+        body: JSON.stringify({ name: newSection.trim() }),
+      });
+      setNewSection('');
+      await loadSections(search);
+    } catch (err) {
+      setError(err.message);
+    }
+  };
+
+  const onCreateVideo = async (event) => {
+    event.preventDefault();
+    const title = newVideo.title.trim();
+    const url = newVideo.url.trim();
+    const sectionId = newVideo.sectionId;
+
+    if (!title || !url || !sectionId) {
+      setError('Please provide title, section, and Google Drive URL.');
       return;
     }
 
-    if (!toPreviewUrl(trimmedUrl)) {
-      setError("Invalid Google Drive link. Please use a shareable Drive file URL.");
+    if (!toPreviewUrl(url)) {
+      setError('Invalid Google Drive URL.');
       return;
     }
 
+<<<<<<< codex/add-professional-readme-and-fix-bugs
     const newVideo = {
       id: generateId(),
       title: trimmedTitle,
@@ -98,61 +165,173 @@ function App() {
     setTitle("");
     setUrl("");
     setError("");
+=======
+    try {
+      await fetchJson('/api/videos', {
+        method: 'POST',
+        body: JSON.stringify({ title, url, sectionId }),
+      });
+      setNewVideo((prev) => ({ ...prev, title: '', url: '' }));
+      await loadSections(search);
+    } catch (err) {
+      setError(err.message);
+    }
+  };
+
+  const onSaveMongoUri = async (event) => {
+    event.preventDefault();
+    if (!mongoUri.trim()) return;
+    try {
+      await fetchJson('/api/config/mongodb-uri', {
+        method: 'POST',
+        body: JSON.stringify({ uri: mongoUri.trim() }),
+      });
+      setMongoUri('');
+      await loadStatus();
+      await loadSections(search);
+      setError('');
+    } catch (err) {
+      setError(err.message);
+    }
+>>>>>>> main
   };
 
   return (
-    <div className="app">
-      <aside className="sidebar">
-        <h1 className="logo"><span>▶</span> PlayTube</h1>
-        <form className="form" onSubmit={onAddVideo}>
-          <input
-            type="text"
-            placeholder="Video title"
-            value={title}
-            onChange={(e) => setTitle(e.target.value)}
-          />
-          <input
-            type="url"
-            placeholder="Google Drive video link"
-            value={url}
-            onChange={(e) => setUrl(e.target.value)}
-          />
-          <button type="submit">Add Video</button>
-          {error ? <p className="helper">{error}</p> : <p className="helper">Tip: set the Drive file to "Anyone with the link can view".</p>}
-        </form>
+    <div className="layout">
+      <header className="topbar">
+        <h1><span>▶</span> PlayTube</h1>
+        <nav>
+          <button className={page === 'welcome' ? 'active' : ''} onClick={() => setPage('welcome')}>Welcome</button>
+          <button className={page === 'explore' ? 'active' : ''} onClick={() => setPage('explore')}>Explore</button>
+          <button className={page === 'manage' ? 'active' : ''} onClick={() => setPage('manage')}>Manage</button>
+        </nav>
+      </header>
 
-        <section className="video-list">
-          {videos.map((video) => (
-            <article
-              key={video.id}
-              className={`video-card ${video.id === selectedId ? "active" : ""}`}
-              onClick={() => setSelectedId(video.id)}
-            >
-              <h3 className="video-title">{video.title}</h3>
-              <p className="video-meta">Google Drive video</p>
+      <main className="page">
+        {error ? <p className="error">{error}</p> : null}
+
+        {page === 'welcome' && (
+          <section>
+            <h2>Welcome to your permanent video hub</h2>
+            <p className="muted">Each section below is loaded from MongoDB and shared for every user.</p>
+            <div className="section-grid">
+              {sections.map((section) => (
+                <article key={section._id} className="card">
+                  <h3>{section.name}</h3>
+                  <p className="muted">{section.videos.length} videos</p>
+                  <ul>
+                    {section.videos.slice(0, 3).map((video) => (
+                      <li key={video._id}>{video.title}</li>
+                    ))}
+                  </ul>
+                </article>
+              ))}
+            </div>
+          </section>
+        )}
+
+        {page === 'explore' && (
+          <section className="explore">
+            <form className="search-row" onSubmit={onSearch}>
+              <input
+                type="text"
+                value={search}
+                onChange={(e) => setSearch(e.target.value)}
+                placeholder="Search videos by title"
+              />
+              <button type="submit">Search</button>
+            </form>
+            <div className="explore-grid">
+              <aside className="list">
+                {allVideos.map((video) => (
+                  <article key={video._id} className={`video-item ${selectedVideo?._id === video._id ? 'selected' : ''}`} onClick={() => setSelectedVideo(video)}>
+                    <h4>{video.title}</h4>
+                    <p>{video.sectionName}</p>
+                  </article>
+                ))}
+              </aside>
+              <div className="player-panel">
+                {selectedVideo ? (
+                  <>
+                    <iframe
+                      className="player"
+                      src={toPreviewUrl(selectedVideo.url)}
+                      title={selectedVideo.title}
+                      allow="autoplay; encrypted-media"
+                      allowFullScreen
+                    />
+                    <h3>{selectedVideo.title}</h3>
+                  </>
+                ) : (
+                  <p className="muted">No videos found for this search.</p>
+                )}
+              </div>
+            </div>
+          </section>
+        )}
+
+        {page === 'manage' && (
+          <section className="manage">
+            <article className="card">
+              <h3>MongoDB Connection</h3>
+              <p className="muted">You can set your MongoDB URI in a local <code>.env</code> file or use this form at runtime.</p>
+              <p className="muted">Connected: <strong>{status.connected ? 'Yes' : 'No'}</strong></p>
+              <form onSubmit={onSaveMongoUri} className="stack">
+                <input
+                  type="text"
+                  placeholder="mongodb+srv://..."
+                  value={mongoUri}
+                  onChange={(e) => setMongoUri(e.target.value)}
+                />
+                <button type="submit">Save MongoDB URI</button>
+              </form>
             </article>
-          ))}
-        </section>
-      </aside>
 
-      <main className="main">
-        {selectedVideo ? (
-          <>
-            <iframe
-              className="player-wrap"
-              src={toPreviewUrl(selectedVideo.url)}
-              title={selectedVideo.title}
-              allow="autoplay; encrypted-media"
-              allowFullScreen
-            />
-            <h2 className="current-title">{selectedVideo.title}</h2>
-          </>
-        ) : (
-          <div className="empty">Add a Google Drive video from the left panel to start watching.</div>
+            <article className="card">
+              <h3>Create Section</h3>
+              <form onSubmit={onCreateSection} className="stack">
+                <input
+                  type="text"
+                  placeholder="Section name"
+                  value={newSection}
+                  onChange={(e) => setNewSection(e.target.value)}
+                />
+                <button type="submit">Add Section</button>
+              </form>
+            </article>
+
+            <article className="card">
+              <h3>Add Video</h3>
+              <form onSubmit={onCreateVideo} className="stack">
+                <input
+                  type="text"
+                  placeholder="Video title"
+                  value={newVideo.title}
+                  onChange={(e) => setNewVideo((prev) => ({ ...prev, title: e.target.value }))}
+                />
+                <input
+                  type="url"
+                  placeholder="Google Drive URL"
+                  value={newVideo.url}
+                  onChange={(e) => setNewVideo((prev) => ({ ...prev, url: e.target.value }))}
+                />
+                <select
+                  value={newVideo.sectionId}
+                  onChange={(e) => setNewVideo((prev) => ({ ...prev, sectionId: e.target.value }))}
+                >
+                  <option value="">Select section</option>
+                  {sections.map((section) => (
+                    <option key={section._id} value={section._id}>{section.name}</option>
+                  ))}
+                </select>
+                <button type="submit">Add Video</button>
+              </form>
+            </article>
+          </section>
         )}
       </main>
     </div>
   );
 }
 
-ReactDOM.createRoot(document.getElementById("root")).render(<App />);
+ReactDOM.createRoot(document.getElementById('root')).render(<App />);
